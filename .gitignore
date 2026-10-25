@@ -34,7 +34,17 @@ nb-configuration.xml
 
 # Local environment
 .env
+.env.*
+!.env.example
 local.properties
+
+# Keys & keystores
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
 
 # Plugin directory
 /.quarkus/cli/plugins/

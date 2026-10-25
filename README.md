@@ -1,78 +1,63 @@
-# payment-reliability-service
+# Payment Reliability Service - Idempotent Payment Record Creation
 
-A Java 21 and Quarkus backend project exploring payment transaction reliability, idempotency, concurrency control, and failure recovery.
+A backend learning project demo payment record creation, persistence, and idempotent request handling using Java, Quarkus, and PostgreSQL.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## Tech Stack
 
-## Running the application in dev mode
+- Java 21
+- Quarkus
+- Hibernate ORM with Panache
+- PostgreSQL
+- Jakarta Transactions
+- JUnit 5 and REST Assured
 
-You can run your application in dev mode that enables live coding using:
+## Features
 
-```shell script
+- Create a payment record (`POST /payments`)
+- Retrieve a payment record (`GET /payments/{id}`)
+- Validate payment amount and currency
+- Prevent duplicate payment records using an `Idempotency-Key`
+- Reject reuse of an idempotency key with a different payload
+- Use a PostgreSQL unique constraint for concurrent request safety
+
+## API Behavior
+
+| Scenario                       | Expected HTTP Status |
+| ------------------------------ | -------------------- |
+| New payment request            | 201 Created          |
+| Same key and same payload      | 200 OK               |
+| Same key and different payload | 409 Conflict         |
+| Payment not found              | 404 Not Found        |
+
+## Architecture
+
+`PaymentResource → PaymentService → PaymentRepository / PaymentWriter → PostgreSQL`
+
+## Running Locally
+
+Prerequisites: Java 21 and Docker.
+
+```bash
 ./gradlew quarkusDev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+Run tests:
 
-## Packaging and running the application
-
-The application can be packaged using:
-
-```shell script
-./gradlew build
+```bash
+./gradlew test
 ```
 
-It produces the `quarkus-run.jar` file in the `build/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `build/quarkus-app/lib/` directory.
+## Design Decisions
 
-The application is now runnable using `java -jar build/quarkus-app/quarkus-run.jar`.
+**Database-backed idempotency:** A unique constraint on `idempotency_key` prevents duplicate payment records across concurrent requests and application instances sharing the same database.
 
-If you want to build an _über-jar_, execute the following command:
+**Transaction boundaries:** Database writes are performed in a dedicated transactional component. Unique constraint violations can be handled after the failed transaction has ended.
 
-```shell script
-./gradlew build -Dquarkus.package.jar.type=uber-jar
-```
+**Payload comparison:** Reusing an idempotency key with a different payment amount or currency returns a conflict.
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar build/*-runner.jar`.
+## Limitations
 
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./gradlew build -Dquarkus.native.enabled=true
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./gradlew build -Dquarkus.native.enabled=true -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./build/payment-reliability-service-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/gradle-tooling>.
-
-## Related Guides
-
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-- Hibernate ORM with Panache ([guide](https://quarkus.io/guides/hibernate-orm-panache)): Simplified JPA/Hibernate data access layer with active record and repository patterns
-- JDBC Driver - PostgreSQL ([guide](https://quarkus.io/guides/datasource)): Connect to the PostgreSQL database via JDBC
-
-## Provided Code
-
-### Hibernate ORM
-
-Create your first JPA entity
-
-[Related guide section...](https://quarkus.io/guides/hibernate-orm)
-
-
-[Related Hibernate with Panache section...](https://quarkus.io/guides/hibernate-orm-panache)
-
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+- This project creates payment records but does not execute real payments.
+- Idempotency keys are globally scoped in this demo.
+- Payload comparison covers amount and currency only.
+- No external payment provider, message queue, or recovery worker is integrated.
